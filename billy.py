@@ -87,50 +87,23 @@ class BOot(slixmpp.ClientXMPP):
         self.send_presence()
         await self.get_roster()
 
-
-
-    async def messagemachines(self):
-        print('waiting for event x')
-        devent.wait()
-        global dshared_list
-        print('dshare' + dshared_list[0])
-        messagetosend = dshared_list[0]
-        dshared_list = dshared_list[1:]
-        devent.clear()
-        print('sending')
-        if dshared_list:
-            try:
-                # Schedule the message sending operation asynchronously
-                self.schedule(lambda: self.send_message('dougdoug@xmpp.skydevs.me', messagetosend, mtype='chat'))
-            except Exception as e:
-                print(f"Error scheduling message: {e}")
-        print('sent?')
-        #await self.sendmessager(messagetosend)
-        await self.messagemachine()
-
     async def messagemachine(self):
         print('waiting for event x')
-        jid = xmpp.protocol.JID(configs['XmppUser'])
-        connection = xmpp.Client(server=jid.getDomain(), debug=True)
-        connection.connect()
-        connection.auth(user=jid.getNode(), password=configs['XmppPass'], resource=jid.getResource())
+        #jid = xmpp.protocol.JID(configs['XmppUser'])
+        #connection = xmpp.Client(server=jid.getDomain(), debug=True)
+        #connection.connect()
+        #connection.auth(user=jid.getNode(), password=configs['XmppPass'], resource=jid.getResource())
 
-        while True:
-            devent.wait()
-            devent.clear()
-            global dshared_list
-            print('huzzahsdfd')
-            msgs = dshared_list[0]
-            print('sending')
-            connection.send(xmpp.protocol.Message(to=configs['Recipient'], body=msgs))
-            await self.messagemachine()
+        devent.wait()
+        devent.clear()
+        global dshared_list
+        print('huzzahsdfd')
+        msgs = dshared_list[0]
+        print('sending')
+		slixmpp.ClientXMPP.send_message(mto=configs['Recipient'], body=msgs)
+        #connection.send(xmpp.protocol.Message(to=configs['Recipient'], body=msgs))
+        await self.messagemachine()
 
-
-
-    async def sendmessager(self, msg):
-        print('test')
-        self.send_message('dougdoug@xmpp.skydevs.me',msg,mtype='chat')
-        
 
 
 
