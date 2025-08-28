@@ -11,10 +11,15 @@ import threading
 from threading import Lock
 import xmpp
 import time
+import json
 #discord setup
 intents = discord.Intents.default()
 intents.message_content = True
 client = discord.Client(intents=intents)
+
+with open('config.json','r') as f:
+	configs = json.load(f)
+
 
 # event from xmpp to discord
 tevent = asyncio.Event()
@@ -105,18 +110,20 @@ class BOot(slixmpp.ClientXMPP):
 
     async def messagemachine(self):
         print('waiting for event x')
-        devent.wait()
-        jid = xmpp.protocol.JID('pinedev@yax.im')
+        jid = xmpp.protocol.JID(configs['XmppUser'])
         connection = xmpp.Client(server=jid.getDomain(), debug=True)
         connection.connect()
-        connection.auth(user=jid.getNode(), password='Amir3132', resource=jid.getResource())
-        devent.clear()
-        global dshared_list
-        print('huzzahsdfd')
-        msgs = dshared_list[0]
-        print('sending')
-        connection.send(xmpp.protocol.Message(to='dougdoug@xmpp.skydevs.me', body=msgs))
-        await self.messagemachine()
+        connection.auth(user=jid.getNode(), password=configs['XmppPass'], resource=jid.getResource())
+
+        while True:
+            devent.wait()
+            devent.clear()
+            global dshared_list
+            print('huzzahsdfd')
+            msgs = dshared_list[0]
+            print('sending')
+            connection.send(xmpp.protocol.Message(to=configs['Recipient'], body=msgs))
+            await self.messagemachine()
 
 
 
@@ -159,7 +166,7 @@ def xmppthing():
 	loop = asyncio.new_event_loop()
 	# 2. Set the new event loop as the current one for this thread.
 	asyncio.set_event_loop(loop)
-	xmpp = BOot ('pinedev@yax.im', 'Amir3132') #jid, password
+	xmpp = BOot (configs['XmppUser'], configs['XmppPass']) #jid, password
 	xmpp.register_plugin('xep_0030') # Service Discovery
 	xmpp.register_plugin('xep_0199') # Ping
 	xmpp.connect()
@@ -171,7 +178,7 @@ if __name__ == '__main__':
         
      #discord starting   
     def discordthing(): 
-        client.run('MTQxMDA0MTE2NzQ5MTM2NzEzMg.G_I9SK.s8GgS7TUX2Iy7KUPaG9dnNasAyqowqe7i3vYN8')
+        client.run(configs['BotToken'])
         
      #manages all the threads and shit   
     thread1 = threading.Thread(target=discordthing)
@@ -209,5 +216,4 @@ if __name__ == '__main__':
                         format='%(levelname)-8s %(message)s')"""
 		
 		
-
 
