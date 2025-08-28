@@ -9,74 +9,142 @@ import queue
 import discord
 import threading
 from threading import Lock
-
+import xmpp
+import time
+#discord setup
 intents = discord.Intents.default()
 intents.message_content = True
-
 client = discord.Client(intents=intents)
 
+# event from xmpp to discord
+tevent = asyncio.Event()
+#event from discord to xmpp
+devent = threading.Event()
 
-tevent = threading.Event()
-shared_list = []
+#list for xmpp messages to queue up for discord to send
+xshared_list = []
 list_lock = Lock()
 
+#list for discord messages to queue up for xmpp to send
+dshared_list = []
+
+
+#discord on startup
 @client.event
 async def on_ready():
     print(f'We have logged in as {client.user}')
     await messagemachine()
 			#send message 
 
+#discord to xmpp
+@client.event
+async def on_message(message):
+    #if message is from bot return
+    if message.author == client.user:
+        return
+    print(message.content)
+    with list_lock:
+        global dshared_list
+        #puts message in da queue
+        dshared_list.append(message.content)
+        print(dshared_list)
+    devent.set()
+    print('event set')
+
+#manages sending the queued xmpp messages to da discord
 async def messagemachine():
         print('waiting for event')
-        tevent.wait()
+        await tevent.wait()
         channel = client.get_channel(1065988089769631796)
-        global shared_list
-        messagetosend = shared_list[0]
-        shared_list = shared_list[1:]
+        global xshared_list
+        messagetosend = xshared_list[0]
+        xshared_list = xshared_list[1:]
         tevent.clear()
         await channel.send(messagetosend)	
         await messagemachine()	
 
 
+
+#xmpp class
 class BOot(slixmpp.ClientXMPP):
+    #initalization
     def __init__(self, jid, password):
         super().__init__(jid, password) 
         
         self.add_event_handler('session_start', self.start)
         self.add_event_handler('message', self.message)
 
+
+    #on start xmpp
     async def start(self, event):
         print('started and connected to xmpp')
+        await self.messagemachine()
         self.send_presence()
         await self.get_roster()
 
-    @client.event
-    async def on_message(message):
-        if message.author == client.user:
-            return
+
+
+    async def messagemachines(self):
+        print('waiting for event x')
+        devent.wait()
+        global dshared_list
+        print('dshare' + dshared_list[0])
+        messagetosend = dshared_list[0]
+        dshared_list = dshared_list[1:]
+        devent.clear()
+        print('sending')
+        if dshared_list:
+            try:
+                # Schedule the message sending operation asynchronously
+                self.schedule(lambda: self.send_message('dougdoug@xmpp.skydevs.me', messagetosend, mtype='chat'))
+            except Exception as e:
+                print(f"Error scheduling message: {e}")
+        print('sent?')
+        #await self.sendmessager(messagetosend)
+        await self.messagemachine()
+
+    async def messagemachine(self):
+        print('waiting for event x')
+        devent.wait()
+        jid = xmpp.protocol.JID('pinedev@yax.im')
+        connection = xmpp.Client(server=jid.getDomain(), debug=True)
+        connection.connect()
+        connection.auth(user=jid.getNode(), password='Amir3132', resource=jid.getResource())
+        devent.clear()
+        global dshared_list
+        print('huzzahsdfd')
+        msgs = dshared_list[0]
+        print('sending')
+        connection.send(xmpp.protocol.Message(to='dougdoug@xmpp.skydevs.me', body=msgs))
+        await self.messagemachine()
+
+
+
+    async def sendmessager(self, msg):
+        print('test')
+        self.send_message('dougdoug@xmpp.skydevs.me',msg,mtype='chat')
         
 
-        channel = client.get_channel(1065988089769631796)
-        messagetosend = shared_list[0]
-        shared_list = shared_list[1:]
-        await channel.send(messagetosend)
-
-        if message.content.startswith('$hello'):
-            await message.channel.send('Hello!')
 
 
+    #on message
     async def message(self, msg):
-        print(msg['body'])
+        #prints message
+        #print(msg['body'])
+        #locks
         with list_lock:
-            shared_list.append(msg['body'])
-            print(shared_list)
+            #puts message in da queue
+            xshared_list.append(msg['body'])
+            print(xshared_list)
+        #sets off tevent
         tevent.set()
         if msg['type'] in ('normal', 'chat'):
+            #if encrypted request decryption
             if msg['body'] == '[This message is OMEMO encrypted]':
                msg.reply('Please turn off Omemo (or possibly other) encryptions because I cant see em :(').send()
                print('sent')
             else:
-               self.send_message('dougdoug@xmpp.skydevs.me',msg['body'],mtype='chat')
+               print('received?')
                #channel = client.get_channel(1065988089769631796)
                #channel.send('a')
 
@@ -101,21 +169,17 @@ def xmppthing():
 if __name__ == '__main__':
 
         
-        
+     #discord starting   
     def discordthing(): 
         client.run('MTQxMDA0MTE2NzQ5MTM2NzEzMg.G_I9SK.s8GgS7TUX2Iy7KUPaG9dnNasAyqowqe7i3vYN8')
         
-        
+     #manages all the threads and shit   
     thread1 = threading.Thread(target=discordthing)
     thread2 = threading.Thread(target=xmppthing)
     thread2.start()
     thread1.start()
     thread2.join()
     thread1.join()
-
-
-
-    #client.run('MTQxMDA0MTE2NzQ5MTM2NzEzMg.GUSxC6.f5GSQUT3ZNLvVbcV5scshVBw_qdNb4Fma3dCrw')
 
 
 """    # Setup the command line arguments.
@@ -145,6 +209,5 @@ if __name__ == '__main__':
                         format='%(levelname)-8s %(message)s')"""
 		
 		
-
 
 
