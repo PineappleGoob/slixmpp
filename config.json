@@ -1,6 +1,6 @@
 {
-"XmppUser": "pinedev@yax.im",
-"XmppPass": "Amir3132",
-"BotToken": "MTQxMDA0MTE2NzQ5MTM2NzEzMg.G_I9SK.s8GgS7TUX2Iy7KUPaG9dnNasAyqowqe7i3vYN8",
-"Recipient": "skydotbit@xmpp.skydevs.me"
+  "User": "xmpp user here",
+  "Pass": "xmpp pass here",
+  "Recipient": "xmpp recipient here",
+  "token": "discord bot token here"
 }
